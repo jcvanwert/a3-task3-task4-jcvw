@@ -1,0 +1,102 @@
+---
+title: "Assignment 3 Task 4"
+author: "Jacey Van Wert"
+date: "11/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(kableExtra)
+library(lubridate)
+
+```
+
+
+## Goal
+
+
+Read in the urchins data and write code to compare the mean size of purple urchins in CONTROL (no giant kelp removal) or ANNUAL (annual kelp removal) sections of Naples Reef in January 2010. You should write nicely annotated code, with clear sections and text as useful, to: 
+
+
+## Read in urchin data
+
+```{r}
+urchin2 <- read_csv(here("data", "urchins.csv")) %>% 
+  clean_names()
+```
+
+
+## Filter data 
+
+Wrangle to select for purple urchin in Naples reef January 2010
+
+```{r}
+purple_naples <- urchin2 %>% 
+  filter(common_name == "Purple Urchin") %>% 
+  filter(site == "NAPL") %>% 
+  mutate(date_new = mdy(date)) %>% 
+  mutate(year = year(date_new)) %>% 
+  mutate(month = month(date_new)) %>% 
+  filter(month == c(1), year == c(2010))
+
+```
+
+
+## Visualize data 
+
+### Histogram
+
+Look at and consider histograms and QQ-plots for the size distribution for each of the treatments (Control and Annual) to assess normality.
+
+```{r}
+ggplot(purple_naples, aes(x = size))+
+  geom_histogram()+
+  facet_wrap(~treatment)
+```
+
+
+### QQ plot
+
+```{r}
+ggplot(purple_naples, aes(sample = size))+
+  geom_qq()+
+  facet_wrap(~treatment)
+```
+
+The distribution of purple urchin size at Naples in Jan 2010 appears to be normally distributed with linear QQplots, and a slightly higher than expected size at thehigh upper tail in the annual treatment. There is some negative skew in both annual and control purple urchins.  
+
+## Summary table
+
+```{r}
+purple_naples_sum <- purple_naples %>% 
+  group_by(treatment) %>% 
+  summarize(mean_size = mean(size),
+            sd_size = sd(size),
+            n = n())
+
+purple_naples_sum %>% 
+  kbl() %>% 
+  kable_styling()
+```
+
+## Two-sample t-test
+Compare the means between annual and control treatments.
+
+```{r}
+annual_sample <- purple_naples %>% 
+  filter(treatment == "ANNUAL") %>% 
+  pull(size)
+
+control_sample <- purple_naples %>% 
+  filter(treatment == "CONTROL") %>% 
+  pull(size)
+
+t.test(x = annual_sample, y = control_sample)
+```
+
+The mean urchin diameter (cm) of purple urchins in the annual treatment (3.9 +/- 0.97 cm, n=60) was 5% greater than the control treatment (3.7 +/- 0.87 cm, n=62). There is not enough evidence to reject the null hypothesis that the urchin diameters are different sizes acrosst treatments (t=1.15, p = 0.25). There is a 25% chance that these randomly drawn samples with means are at least this different if they were actually drawn from a population with the same mean. 
+

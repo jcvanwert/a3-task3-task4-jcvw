@@ -1,0 +1,131 @@
+---
+title: "Assignment 3 Task 3"
+author: "Jacey Van Wert"
+date: "11/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(kableExtra)
+library(lubridate)
+
+```
+
+## Goal
+
+Data description: For this task you’ll use data for red and purple urchins observed at 5 sites along the Santa Barbara coast. Note: Data in urchins.csv (on GauchoSpace) have been updated from their raw form for the scope of this assignment. See complete description and metadata here, or see below for essential data descriptions
+
+Variables (columns) in the data: 
+DATE: date urchin recorded
+SITE: site along the SB coast (the five sites can be explored here)
+TREATMENT: indicates experimental kelp treatments:
+CONTROL = giant kelp left intact
+ANNUAL = giant kelp is “removed...once each winter and allowed to re-colonize over the course of the year”
+SIZE: urchin diameter (cm), measured to the nearest 0.5 cm
+SCIENTIFIC NAME: scientific name
+COMMON NAME: species common name (either red or purple urchin)
+
+## Read in urchin data
+Clean with 'janitor' package. 
+
+```{r}
+urchin <- read_csv(here("data", "urchins.csv")) %>% 
+  clean_names()
+```
+
+
+## Section 1: Size comparisons, purple and red urchins 
+Include data from all sites, and for both treatments - i.e. ignore those variables in this exploration
+
+Exploratory data visualization: compare the distribution of sizes between purple and red urchins using the graph types below.
+
+### Exploratory Data Viz 
+
+#### Histogram
+```{r}
+ggplot(urchin, aes(x = size))+
+  geom_histogram()+
+  facet_wrap(~common_name)+
+  labs(y= "Number of urchins", x = "Size (cm)")+
+  theme_classic()
+```
+
+#### Boxplot
+```{r}
+ggplot(urchin, aes(x = common_name, y = size))+
+  geom_boxplot()+
+  labs(x = "Common Name", y = "Size (cm)")+
+  theme_classic()
+```
+
+### Summary statistics
+Descriptive statistics table: a summary table that contains the following statistics for purple and red urchins (still ignoring site as a variable): mean, median, standard deviation, and sample size. 
+
+Use 'kableExtra' to make it perty. 
+
+```{r}
+urchin_summary <- urchin %>% 
+  group_by(common_name) %>% 
+  summarise(mean_size = mean(size),
+            sd_size = sd(size),
+            median_size = median(size),
+            n = n()) 
+
+urchin_summary %>% 
+  kbl() %>% 
+  kable_styling()
+  
+  
+```
+
+Overall, red urchins (6.8 cm, n = 27408) were larger in diameter than purple urchins (4.5 cm, n = 31805) by 51%. The purple urchins had a smaller spread and were silghtly skewed to the smaller side, while the red urchins had a wider spread with a normal distribution. 
+
+
+
+## Section 2: Purple urchin counts by site and year
+
+### Prepare data
+Modifying date to have year as a column; adding a column with full site name using case_when() within mutate(). 
+
+```{r}
+purple_urchins <- urchin %>% 
+  filter(common_name == "Purple Urchin") %>% 
+  mutate(date_new = mdy(date)) %>% 
+  mutate(year = year(date_new)) %>% 
+  mutate(site_full = case_when(
+    site %in% "NAPL" ~ "Naples Reef",
+    site %in% "AQUE" ~ "Arroyo Quemado Reef",
+    site %in% "CARP" ~ "Carpinteria Reef", 
+    site %in% "MOHK" ~ "Mohawk Reef", 
+    site %in% "IVEE" ~ "Isla Vista Reef"
+  ))
+```
+
+
+### Summary table: purple urchins by site and year
+
+```{r}
+purple_urchin_site_year<-purple_urchins %>%
+  group_by(site_full, year) %>% 
+  count()
+```
+
+### Exploratory graph
+
+Make an exploratory graph of counts of purple urchins recorded at each site over time for the years included in the study. 
+
+```{r}
+ggplot(purple_urchin_site_year, aes(x = year, y = n, color=site_full))+
+  geom_point()+
+  geom_line()+
+  labs(y="Number of purple urchins", x = "Year")+
+ # facet_grid(~site_full)+
+  theme_classic()
+```
+
+
+
